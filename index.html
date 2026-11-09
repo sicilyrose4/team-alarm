@@ -222,6 +222,9 @@ button { font: inherit; color: inherit; cursor: pointer; }
 .ringing .ripple { animation: ripple 2s cubic-bezier(.2,.6,.3,1) infinite; }
 .ringing .ripple.r2 { animation-delay: 1s; }
 @keyframes ripple { 0% { transform: scale(1); opacity: .9; } 100% { transform: scale(1.55); opacity: 0; } }
+/* On narrow phones the ripple stops at the screen edge instead of past it. */
+@media (max-width: 359px) { .ringing .ripple { animation-name: rippleSm; } }
+@keyframes rippleSm { 0% { transform: scale(1); opacity: .9; } 100% { transform: scale(1.32); opacity: 0; } }
 .dial-face { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; padding-top: 6px; }
 .ringing .dial-face { animation: buzz 1s linear infinite; }
 @keyframes buzz {
@@ -230,7 +233,7 @@ button { font: inherit; color: inherit; cursor: pointer; }
   12% { transform: translateX(-2px) rotate(-1deg); } 16% { transform: translateX(2px) rotate(1deg); }
   20% { transform: translateX(-1px); } 24% { transform: none; }
 }
-.rays { position: absolute; top: 0; left: 50%; width: 390px; height: 227px; margin-left: -195px; pointer-events: none; overflow: visible; }
+.rays { position: absolute; top: 0; left: 0; right: 0; margin-inline: auto; width: min(390px, 100%); height: 227px; pointer-events: none; overflow: visible; }
 .rays path { stroke: var(--night-3); stroke-width: 2; stroke-linecap: round; }
 .ringing .rays .l { animation: rayL 1s ease-in-out infinite; }
 .ringing .rays .r { animation: rayR 1s ease-in-out infinite; }
@@ -324,6 +327,8 @@ button { font: inherit; color: inherit; cursor: pointer; }
 }
 .still-ringing svg { transform-origin: 50% 10%; animation: bellShake 1s ease-in-out infinite; }
 .still-ringing .n { font-variant-numeric: tabular-nums; }
+.still-ringing.quiet { background: color-mix(in srgb, var(--snooze) 16%, transparent); color: var(--snooze); animation: none; }
+.still-ringing.quiet svg { animation: none; }
 @keyframes ringingGlow { 0%, 100% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--sleep) 0%, transparent); } 50% { box-shadow: 0 0 0 6px color-mix(in srgb, var(--sleep) 14%, transparent); } }
 @keyframes bellShake { 0%, 50%, 100% { transform: none; } 10%, 30% { transform: rotate(-16deg); } 20%, 40% { transform: rotate(16deg); } }
 .celebrate { margin-top: 28px; display: flex; flex-direction: column; gap: 8px; animation: viewIn .8s .2s cubic-bezier(.2,.7,.2,1) both; }
@@ -716,6 +721,8 @@ button { font: inherit; color: inherit; cursor: pointer; }
   }
   const count = k => team.filter(p => p.status === k).length;
   const allUp = () => team.length > 0 && count('off') === team.length;
+  // Nobody left asleep, only snoozers: the alarm goes quiet until a snooze runs out.
+  const quiet = () => !allUp() && count('asleep') === 0;
   const isLeader = () => !!alarm && (alarm.creator === myKey || isOwner);
   function creatorName() {
     if (!alarm) return '';
@@ -986,9 +993,9 @@ button { font: inherit; color: inherit; cursor: pointer; }
       ? `<div class="celebrate"><strong>Everyone's up</strong><span>Alarm off for all ${team.length}. See you at the gym.</span>
           ${isLeader() ? '<button class="btn-text again" data-act="reset" type="button">SET UP ANOTHER ROUND</button>' : ''}</div>`
       : `<div class="hero">
-          <p class="still-ringing">
+          <p class="still-ringing${quiet() ? ' quiet' : ''}">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.7 21a2 2 0 0 1-3.4 0"/></svg>
-            Still ringing for everyone</p>
+            ${quiet() ? `Paused · ${count('snoozing')} snoozing` : 'Still ringing for everyone'}</p>
           <p class="hero-count"><strong data-left>${team.length - count('off')}</strong><span>to go</span></p>
           <p class="feed" id="feed" aria-live="polite">${ui.feed}</p>
         </div>`;
@@ -1110,12 +1117,12 @@ button { font: inherit; color: inherit; cursor: pointer; }
     prevTeam = team;
     const screen = screenFor();
     // The status hero swaps from "still ringing" to "everyone's up", so redraw when that flips.
-    const up = allUp();
+    const up = allUp() ? 'up' : quiet() ? 'quiet' : 'ring';
     if (screen !== ui.screen || up !== ui.allUp || (force && screen !== 'create' && screen !== 'name')) {
       if (screen === 'ringing' && ui.screen !== 'ringing' && !ui.feed) setFeed("It's time");
       ui.screen = screen; ui.allUp = up; render();
     } else refresh();
-    const ringing = ui.screen === 'ringing' || (ui.screen === 'status' && ringingRound() && !allUp());
+    const ringing = ui.screen === 'ringing' || (ui.screen === 'status' && ringingRound() && count('asleep') > 0);
     if (ringing && now - lastBeep >= 1000) {
       lastBeep = now; beep();
       if (ui.screen === 'ringing' && navigator.vibrate) navigator.vibrate([300, 150, 300]);
