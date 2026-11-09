@@ -1,0 +1,1256 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#1D1F34">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<title>Morning Workout Alarm</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@500&family=Reddit+Sans:wght@300;400;500;600;700&display=swap">
+<style>
+html, body { margin: 0; }
+/* Layout: one phone, centered, with a slim demo rail beside it (stacks below on phones). Night-to-dawn: the screen warms as the team wakes. */
+:root {
+  --page: #13142A;
+  --night: #1D1F34;
+  --night-2: #2D3046;
+  --night-3: #353854;
+  --ink: #E8E9F2;
+  --ink-2: #B2B4C6;
+  --ink-3: #8E90A4;
+  --chip: #CBCDDF;
+  --sleep: #E7A099;
+  --sleep-dim: #DE857D;
+  --snooze: #E0DFA2;
+  --off: #9BBBA7;
+  --f-ui: 'Reddit Sans', system-ui, -apple-system, sans-serif;
+  --f-clock: 'SF Compact Rounded', ui-rounded, 'SF Pro Rounded', 'Reddit Sans', system-ui, sans-serif;
+  --f-ampm: 'Rajdhani', 'Reddit Sans', sans-serif;
+  color-scheme: dark;
+}
+html, body { height: 100%; }
+body {
+  background: radial-gradient(90% 70% at 50% 0%, #1B1D36 0%, var(--page) 70%) var(--page);
+  color: var(--ink);
+  font-family: var(--f-ui);
+  -webkit-font-smoothing: antialiased;
+}
+button { font: inherit; color: inherit; cursor: pointer; }
+:focus-visible { outline: 2px solid var(--chip); outline-offset: 3px; }
+
+.stage {
+  min-height: 100%;
+  display: flex; flex-wrap: wrap; align-items: center; justify-content: center;
+  gap: 56px;
+  padding-block: 24px;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+  box-sizing: border-box;
+}
+
+/* ---------- Demo rail ---------- */
+.rail { width: 260px; display: flex; flex-direction: column; gap: 20px; }
+.rail h1 { margin: 0; font-size: 28px; font-weight: 600; line-height: 1.15; color: var(--ink); text-wrap: balance; }
+.rail p { margin: 0; font-size: 15px; line-height: 1.55; color: var(--ink-2); }
+.legend { display: flex; flex-direction: column; gap: 8px; margin: 0; padding: 0; list-style: none; font-size: 14px; color: var(--ink-2); }
+.legend li { display: flex; align-items: center; gap: 10px; }
+.legend i { width: 12px; height: 12px; border-radius: 50%; display: inline-block; }
+.controls { display: flex; flex-direction: column; gap: 8px; }
+.controls-label { font-size: 12px; font-weight: 600; letter-spacing: 0.12em; text-transform: uppercase; color: var(--ink-3); }
+.ctl {
+  height: 44px; padding: 0 16px; border-radius: 22px;
+  border: 1px solid var(--night-3); background: transparent; color: var(--ink);
+  font-size: 15px; font-weight: 500; text-align: left;
+  display: flex; align-items: center; justify-content: space-between; gap: 12px;
+  transition: background .2s, border-color .2s;
+}
+.ctl:hover { background: var(--night-2); border-color: var(--night-2); }
+.ctl:disabled { opacity: .45; cursor: default; background: transparent; }
+.ctl svg { flex: none; }
+.ctl small { color: var(--ink-3); font-size: 13px; }
+
+/* ---------- Phone ---------- */
+.phone {
+  position: relative;
+  width: 390px;
+  height: min(844px, calc(100dvh - 48px));
+  min-height: 700px;
+  border-radius: 56px;
+  padding: 10px;
+  background: #0B0C19;
+  box-shadow: 0 0 0 1px #2A2C46, 0 40px 80px -20px rgba(0,0,0,.6), 0 0 120px -30px rgba(155,187,167,.15);
+  flex: none;
+}
+.screen {
+  --wake: 0;
+  position: relative; height: 100%; overflow: hidden;
+  border-radius: 46px;
+  background: var(--night);
+  isolation: isolate;
+}
+.dawn {
+  position: absolute; inset: 0; z-index: 3; pointer-events: none;
+  background:
+    radial-gradient(130% 55% at 50% 118%, rgba(231,160,153,.55) 0%, rgba(224,223,162,.22) 42%, rgba(29,31,52,0) 72%);
+  mix-blend-mode: screen;
+  opacity: calc(var(--wake) * .85);
+  transition: opacity 1.4s ease;
+}
+.screen.sunrise .dawn {
+  opacity: 1;
+  background:
+    radial-gradient(150% 75% at 50% 120%, rgba(231,160,153,.7) 0%, rgba(224,223,162,.35) 45%, rgba(155,187,167,.08) 70%, rgba(29,31,52,0) 85%);
+}
+.view {
+  position: absolute; inset: 0; z-index: 2;
+  display: flex; flex-direction: column;
+  padding: 58px 32px 34px;
+  animation: viewIn .5s cubic-bezier(.2,.7,.2,1) both;
+}
+@keyframes viewIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: none; } }
+
+.title { margin: 0; font-size: 32px; font-weight: 500; line-height: 1.2; color: var(--ink-2); letter-spacing: -0.01em; }
+.title.sm { font-size: 20px; color: var(--ink-3); letter-spacing: 0; }
+.center { text-align: center; }
+.feed {
+  margin: 8px 0 0; min-height: 20px;
+  font-size: 15px; font-weight: 500; color: var(--ink-3);
+  transition: color .3s;
+}
+.feed b { color: var(--ink-2); font-weight: 600; }
+.feed.flash { animation: feedIn .45s ease both; }
+@keyframes feedIn { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: none; } }
+
+/* Clock */
+.clock {
+  position: relative; display: inline-block;
+  font-family: var(--f-clock); font-weight: 300; font-size: 132px; line-height: 1;
+  color: var(--ink); letter-spacing: -0.02em;
+  font-variant-numeric: tabular-nums;
+}
+.ampm-side { position: absolute; left: 100%; bottom: 12px; margin-left: 8px; font-family: var(--f-clock); font-weight: 500; font-size: 21px; color: #B0B4D9; letter-spacing: 0; }
+.ampm-under { display: block; margin-top: 4px; text-align: center; font-family: var(--f-ampm); font-weight: 500; font-size: 27px; color: #B1B3C5; letter-spacing: .04em; }
+
+/* Buttons */
+.actions { display: flex; flex-direction: column; align-items: center; gap: 6px; }
+.btn-primary {
+  min-width: 216px; height: 52px; padding: 0 56px;
+  border: 0; border-radius: 76px;
+  background: var(--chip); color: var(--night);
+  font-size: 32px; font-weight: 600; letter-spacing: .02em;
+  box-shadow: 0 10px 30px -10px rgba(203,205,223,.45);
+  transition: transform .15s ease, box-shadow .2s ease, background .3s ease;
+  display: inline-flex; align-items: center; justify-content: center; gap: 10px;
+}
+.btn-primary:hover { box-shadow: 0 14px 36px -10px rgba(203,205,223,.6); }
+.btn-primary:active { transform: scale(.96); }
+.btn-primary.done { background: var(--off); font-size: 26px; }
+.btn-text {
+  height: 44px; padding: 0 28px; border: 0; border-radius: 22px; background: transparent;
+  color: var(--chip); font-size: 18px; font-weight: 500; letter-spacing: .04em;
+  transition: background .2s;
+}
+.btn-text:hover { background: rgba(203,205,223,.08); }
+
+/* ---------- Join ---------- */
+.inviter { display: flex; align-items: center; gap: 8px; font-size: 16px; color: var(--ink-3); }
+.av {
+  width: 48px; height: 48px; border-radius: 50%; flex: none;
+  background: var(--c); color: var(--night);
+  display: inline-flex; align-items: center; justify-content: center;
+  font-weight: 600; font-size: 17px;
+  box-shadow: 0 0 0 3px var(--night);
+}
+.av-sm { width: 27px; height: 27px; font-size: 12px; box-shadow: none; }
+.join-title { margin-top: 18px; }
+.join-clock { margin-top: auto; display: flex; flex-direction: column; align-items: center; gap: 22px; }
+.crew {
+  border: 0; background: transparent; padding: 6px 12px; border-radius: 20px;
+  display: flex; flex-direction: column; align-items: center; gap: 8px;
+  transition: background .2s;
+}
+.crew:hover { background: rgba(203,205,223,.06); }
+.stack { display: flex; flex-direction: row-reverse; }
+.stack .av { margin-left: -18px; transition: transform .35s cubic-bezier(.3,1.5,.5,1); }
+.stack .av:last-child { margin-left: 0; }
+.crew:hover .stack .av:nth-child(2) { transform: translateX(-3px); }
+.crew:hover .stack .av:nth-child(3) { transform: translateX(-6px); }
+.stack .av.me { animation: slideIn .6s cubic-bezier(.3,1.4,.5,1) both; }
+@keyframes slideIn { from { transform: translateX(30px) scale(.4); opacity: 0; } to { transform: none; opacity: 1; } }
+.crew-count { font-size: 18px; font-weight: 500; color: var(--ink-3); }
+.join-actions { margin-top: auto; }
+.declined { text-align: center; display: flex; flex-direction: column; align-items: center; gap: 4px; }
+.declined p { margin: 0; font-size: 15px; color: var(--ink-2); line-height: 1.5; }
+
+/* Crew sheet */
+.sheet-scrim { position: absolute; inset: 0; z-index: 5; background: rgba(10,11,25,.55); animation: fade .25s ease both; }
+.sheet {
+  position: absolute; left: 0; right: 0; bottom: 0; z-index: 6;
+  max-height: 72%; display: flex; flex-direction: column;
+  background: #24263E; border-radius: 28px 28px 46px 46px;
+  padding: 10px 24px 28px;
+  animation: sheetUp .38s cubic-bezier(.2,.8,.2,1) both;
+}
+@keyframes sheetUp { from { transform: translateY(100%); } to { transform: none; } }
+@keyframes fade { from { opacity: 0; } to { opacity: 1; } }
+.grabber { width: 40px; height: 5px; border-radius: 3px; background: var(--night-3); margin: 0 auto 14px; }
+.sheet-head { display: flex; align-items: baseline; justify-content: space-between; margin-bottom: 10px; }
+.sheet-head h3 { margin: 0; font-size: 20px; font-weight: 600; }
+.sheet-head span { font-size: 14px; color: var(--ink-3); }
+.roster { list-style: none; margin: 0; padding: 0; overflow-y: auto; }
+.roster li { display: flex; align-items: center; gap: 12px; padding: 8px 0; border-top: 1px solid rgba(53,56,84,.7); font-size: 16px; }
+.roster li:first-child { border-top: 0; }
+.roster .av { width: 36px; height: 36px; font-size: 14px; box-shadow: none; }
+.roster .tag { margin-left: auto; font-size: 13px; font-weight: 500; color: var(--ink-3); }
+.roster .tag.in { color: var(--off); }
+
+/* ---------- Night ---------- */
+.night { justify-content: center; align-items: center; text-align: center; gap: 18px; }
+.eyebrow { font-size: 13px; font-weight: 600; letter-spacing: .14em; text-transform: uppercase; color: var(--ink-3); }
+.night .clock { font-size: 112px; color: var(--ink-2); }
+.night .secs { font-size: 34px; color: var(--ink-3); margin-left: 4px; }
+.night p { margin: 0; max-width: 260px; font-size: 16px; line-height: 1.5; color: var(--ink-3); }
+
+/* ---------- Dial (ringing / snoozing) ---------- */
+.dial-wrap { position: relative; height: 227px; margin-top: 34px; display: flex; justify-content: center; flex: none; }
+.dial { position: relative; width: 227px; height: 227px; }
+.disc { position: absolute; inset: 0; border-radius: 50%; background: var(--night-2); }
+.ripple { position: absolute; inset: 0; border-radius: 50%; border: 2px solid rgba(203,205,223,.22); opacity: 0; }
+.ringing .ripple { animation: ripple 2s cubic-bezier(.2,.6,.3,1) infinite; }
+.ringing .ripple.r2 { animation-delay: 1s; }
+@keyframes ripple { 0% { transform: scale(1); opacity: .9; } 100% { transform: scale(1.55); opacity: 0; } }
+.dial-face { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; padding-top: 6px; }
+.ringing .dial-face { animation: buzz 1s linear infinite; }
+@keyframes buzz {
+  0%, 40%, 100% { transform: none; }
+  4% { transform: translateX(-2px) rotate(-1deg); } 8% { transform: translateX(2px) rotate(1deg); }
+  12% { transform: translateX(-2px) rotate(-1deg); } 16% { transform: translateX(2px) rotate(1deg); }
+  20% { transform: translateX(-1px); } 24% { transform: none; }
+}
+.rays { position: absolute; top: 0; left: 50%; width: 390px; height: 227px; margin-left: -195px; pointer-events: none; overflow: visible; }
+.rays path { stroke: var(--night-3); stroke-width: 2; stroke-linecap: round; }
+.ringing .rays .l { animation: rayL 1s ease-in-out infinite; }
+.ringing .rays .r { animation: rayR 1s ease-in-out infinite; }
+.ringing .rays path { animation: rayGlow 1s ease-in-out infinite; }
+@keyframes rayL { 0%, 100% { transform: none; } 50% { transform: translateX(-5px); } }
+@keyframes rayR { 0%, 100% { transform: none; } 50% { transform: translateX(5px); } }
+@keyframes rayGlow { 0%, 100% { stroke: var(--night-3); } 50% { stroke: #6A6E98; } }
+.snooze-ring { position: absolute; inset: -12px; width: calc(100% + 24px); height: calc(100% + 24px); transform: rotate(-90deg); }
+.snooze-ring circle { fill: none; stroke-width: 3; }
+.snooze-ring .track { stroke: rgba(224,223,162,.12); }
+.snooze-ring .bar { stroke: var(--snooze); stroke-linecap: round; transition: stroke-dashoffset .1s linear; }
+
+/* Team progress under the dial: count first, then who, then what just happened */
+.team { margin-top: auto; display: flex; flex-direction: column; align-items: center; gap: 12px; }
+.team-count { margin: 0; font-size: 18px; font-weight: 500; color: var(--ink-2); }
+.team-count strong { font-size: 34px; font-weight: 600; color: var(--ink); font-variant-numeric: tabular-nums; margin-right: 2px; }
+.team .feed { margin: 0; }
+.grid { display: flex; justify-content: center; gap: 4px; }
+.dot {
+  --s: var(--sleep);
+  position: relative; width: 23px; height: 23px; border-radius: 50%;
+  background: var(--s); color: var(--night);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 10px; font-weight: 700;
+  transition: background .8s ease, transform .4s ease;
+}
+.dot.you { box-shadow: 0 0 0 2px var(--night), 0 0 0 3.5px var(--ink-2); }
+.dot.s-snoozing { --s: var(--snooze); }
+.dot.s-off { --s: var(--off); }
+.dot.s-asleep::after {
+  content: ""; position: absolute; inset: -2px; border-radius: 50%;
+  border: 1.5px solid var(--s);
+  animation: sleeperPulse 1.6s ease-in-out infinite;
+}
+@keyframes sleeperPulse { 0%, 100% { opacity: 0; transform: scale(.9); } 50% { opacity: .8; transform: scale(1.12); } }
+.dot.changed { animation: pop .6s cubic-bezier(.3,1.6,.5,1); }
+@keyframes pop { 0% { transform: scale(.6); } 100% { transform: none; } }
+.view > .actions { margin-top: auto; }
+.snooze-label { font-size: 32px; font-weight: 600; color: var(--chip); letter-spacing: .02em; line-height: 52px; }
+.countdown { font-size: 18px; font-weight: 500; color: var(--chip); font-variant-numeric: tabular-nums; line-height: 1.4; }
+.countdown-note { font-size: 13px; color: var(--ink-3); }
+
+/* ---------- Status ---------- */
+.view.status { padding-inline: 35px; }
+.hero { margin-top: 28px; display: flex; flex-direction: column; align-items: flex-start; gap: 6px; }
+.hero-count { margin: 6px 0 0; display: flex; align-items: baseline; gap: 10px; line-height: 1; }
+.hero-count strong { font-size: 64px; font-weight: 600; color: var(--ink); font-variant-numeric: tabular-nums; letter-spacing: -0.02em; }
+.hero-count span { font-size: 22px; font-weight: 500; color: var(--ink-2); }
+.hero .feed { margin: 4px 0 0; }
+.groups { margin-top: 36px; display: flex; flex-direction: column; gap: 32px; overflow-y: auto; min-height: 0; padding-bottom: 4px; }
+.group { display: flex; flex-direction: column; gap: 16px; }
+.group-head { display: flex; align-items: center; gap: 8px; min-height: 32px; }
+.group-head h2 { margin: 0; font-size: 16px; font-weight: 600; color: var(--ink-2); }
+.group-head .n { font-size: 14px; color: var(--ink-3); font-variant-numeric: tabular-nums; }
+.g-snoozing .group-head h2, .g-off .group-head h2 { font-size: 14px; font-weight: 500; color: var(--ink-3); }
+.group.g-snoozing, .group.g-off { gap: 10px; }
+.nudge {
+  margin-left: auto; height: 32px; padding: 0 14px; border-radius: 16px;
+  border: 1px solid color-mix(in srgb, var(--sleep) 50%, transparent); background: transparent;
+  color: var(--sleep); font-size: 14px; font-weight: 600;
+  display: inline-flex; align-items: center; gap: 6px;
+  transition: background .2s, color .2s;
+}
+.nudge:hover { background: var(--sleep); color: var(--night); }
+/* Size follows urgency: sleepers big, snoozers medium, the people who are up small */
+.dots { --d: 61.57px; display: flex; flex-wrap: wrap; gap: 18px; }
+.g-snoozing .dots { --d: 40px; gap: 10px; }
+.g-off .dots { --d: 26px; gap: 6px; }
+.sdot {
+  width: var(--d); height: var(--d); border-radius: 50%; flex: none;
+  background: var(--s); color: var(--night);
+  display: flex; align-items: center; justify-content: center;
+  font-size: calc(var(--d) * .32); font-weight: 600;
+}
+.sdot.you { box-shadow: 0 0 0 3px var(--night), 0 0 0 5px var(--ink-2); }
+.g-off .sdot.you { box-shadow: 0 0 0 2px var(--night), 0 0 0 3.5px var(--ink-2); }
+.sdot.s-asleep { --s: var(--sleep); }
+.sdot.s-snoozing { --s: var(--snooze); }
+.sdot.s-off { --s: var(--off); }
+.sdot.arrived { animation: arrive .7s cubic-bezier(.3,1.5,.5,1) both; }
+@keyframes arrive { from { transform: scale(.3); opacity: 0; } to { transform: none; opacity: 1; } }
+.sdot.nudged { animation: nudge .5s ease 2; }
+@keyframes nudge { 0%,100% { transform: none; } 20% { transform: translateX(-5px) rotate(-6deg); } 40% { transform: translateX(5px) rotate(6deg); } 60% { transform: translateX(-3px); } 80% { transform: translateX(3px); } }
+.still-ringing {
+  margin: 0;
+  display: inline-flex; align-items: center; gap: 8px;
+  height: 34px; padding: 0 14px; border-radius: 17px;
+  background: color-mix(in srgb, var(--sleep) 16%, transparent);
+  color: var(--sleep); font-size: 14px; font-weight: 600;
+  animation: ringingGlow 1s ease-in-out infinite;
+}
+.still-ringing svg { transform-origin: 50% 10%; animation: bellShake 1s ease-in-out infinite; }
+.still-ringing .n { font-variant-numeric: tabular-nums; }
+@keyframes ringingGlow { 0%, 100% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--sleep) 0%, transparent); } 50% { box-shadow: 0 0 0 6px color-mix(in srgb, var(--sleep) 14%, transparent); } }
+@keyframes bellShake { 0%, 50%, 100% { transform: none; } 10%, 30% { transform: rotate(-16deg); } 20%, 40% { transform: rotate(16deg); } }
+.celebrate { margin-top: 28px; display: flex; flex-direction: column; gap: 8px; animation: viewIn .8s .2s cubic-bezier(.2,.7,.2,1) both; }
+.celebrate strong { font-size: 44px; line-height: 1.05; font-weight: 600; color: var(--ink); }
+.celebrate span { font-size: 16px; color: var(--ink-2); }
+
+/* ---------- Live test additions ---------- */
+.mode { display: flex; align-items: center; gap: 8px; font-size: 14px !important; font-weight: 500; color: var(--ink-3) !important; }
+.live-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--ink-3); flex: none; }
+.mode.live { color: var(--off) !important; }
+.mode.live .live-dot { background: var(--off); animation: livePulse 2s ease-in-out infinite; }
+@keyframes livePulse { 0%, 100% { box-shadow: 0 0 0 0 rgba(155,187,167,.5); } 50% { box-shadow: 0 0 0 5px rgba(155,187,167,0); } }
+.steps { margin: 0; padding-left: 20px; display: flex; flex-direction: column; gap: 8px; font-size: 15px; line-height: 1.5; color: var(--ink-2); }
+.steps b { color: var(--ink); font-weight: 600; }
+.rail .fine { font-size: 13px; color: var(--ink-3); }
+.ctl[hidden] { display: none; }
+.sound-chip {
+  height: 40px; padding: 0 16px; border-radius: 20px; border: 1px solid var(--night-3);
+  background: var(--night-2); color: var(--ink); font-size: 14px; font-weight: 600;
+  display: inline-flex; align-items: center; gap: 8px; margin-bottom: 10px;
+  animation: ringingGlow 1.4s ease-in-out infinite;
+}
+.night .ring-now { margin-top: 8px; }
+.joined-row { display: flex; flex-direction: column; align-items: center; gap: 10px; }
+.joined-row .grid { flex-wrap: wrap; max-width: 306px; }
+.joined-row span { font-size: 14px; color: var(--ink-3); }
+.dot.away, .sdot.away { opacity: .45; }
+
+/* Create screen: name it, set the time */
+.create .field-label { margin-top: 26px; font-size: 13px; font-weight: 600; letter-spacing: .12em; text-transform: uppercase; color: var(--ink-3); }
+.name-input {
+  width: 100%; box-sizing: border-box; margin-top: 6px; padding: 4px 0 10px;
+  border: 0; border-bottom: 1px solid var(--night-3); border-radius: 0; background: transparent;
+  color: var(--ink); font: 500 32px var(--f-ui); letter-spacing: -0.01em;
+  transition: border-color .2s;
+}
+.name-input:focus { outline: none; border-bottom-color: var(--chip); }
+.name-input::placeholder { color: var(--night-3); }
+.picker { margin-top: auto; display: flex; align-items: center; justify-content: center; gap: 2px; }
+.seg { display: flex; flex-direction: column; align-items: center; }
+.seg .val, .picker .colon { font-family: var(--f-clock); font-weight: 300; font-size: 88px; line-height: 1; color: var(--ink); font-variant-numeric: tabular-nums; letter-spacing: -0.02em; }
+.seg .val { text-align: center; }
+/* Hour is a fixed two-digit slot: arrows never move, a single digit centers in the slot */
+.seg-h { width: 1.15em; font-size: 88px; flex-direction: row; }
+.seg-col { width: 100%; display: flex; flex-direction: column; align-items: center; font-size: 16px; }
+.picker .colon { padding-bottom: 6px; }
+.step { width: 48px; height: 40px; border: 0; border-radius: 20px; background: transparent; color: var(--ink-3); display: flex; align-items: center; justify-content: center; transition: background .2s, color .2s; }
+.step:hover { background: var(--night-2); color: var(--ink); }
+.step:active { transform: scale(.94); }
+.ampm-toggle { display: flex; flex-direction: column; gap: 8px; margin-left: 12px; }
+.ampm-toggle button { width: 54px; height: 34px; border-radius: 17px; border: 1px solid var(--night-3); background: transparent; color: var(--ink-3); font: 600 15px var(--f-ui); letter-spacing: .04em; transition: background .2s, color .2s, border-color .2s; }
+.ampm-toggle button[aria-pressed="true"] { background: var(--chip); border-color: var(--chip); color: var(--night); }
+.create-note { margin: 22px auto 0; max-width: 280px; text-align: center; font-size: 15px; line-height: 1.5; color: var(--ink-3); }
+.create .actions { margin-top: auto; }
+.select-wrap { position: relative; margin-top: 8px; }
+.team-select {
+  width: 100%; height: 52px; padding: 0 48px 0 18px; box-sizing: border-box;
+  appearance: none; -webkit-appearance: none;
+  border: 1px solid var(--night-3); border-radius: 26px; background: var(--night-2);
+  color: var(--ink); font: 500 18px var(--f-ui); cursor: pointer;
+  transition: border-color .2s;
+}
+.team-select.empty { color: var(--ink-3); }
+.team-select option { color: var(--ink); background: var(--night-2); }
+.create [data-act=create]:disabled { opacity: .35; cursor: default; box-shadow: none; }
+.team-select:hover, .team-select:focus { border-color: var(--chip); outline: none; }
+.select-wrap svg { position: absolute; right: 18px; top: 50%; transform: translateY(-50%); color: var(--ink-3); pointer-events: none; }
+.team-tag { align-self: flex-start; margin-top: 10px; padding: 5px 12px; border-radius: 14px; background: var(--night-2); font-size: 14px; font-weight: 600; color: var(--ink-2); }
+.create .field-label { margin-top: 22px; }
+.new-link { margin-top: 6px; border: 0; background: transparent; padding: 6px 10px; font-size: 14px; color: var(--ink-3); text-decoration: underline; text-underline-offset: 3px; }
+.new-link:hover { color: var(--ink-2); }
+.name-screen .name-hero { margin-top: auto; display: flex; flex-direction: column; align-items: center; gap: 22px; }
+.av-xl { width: 112px; height: 112px; font-size: 46px; box-shadow: none; transition: background .3s; }
+.name-screen .field-label { margin-top: 44px; }
+.name-screen .actions { margin-top: auto; }
+.name-screen [data-act=set-name]:disabled { opacity: .35; cursor: default; box-shadow: none; }
+.loading { justify-content: center; align-items: center; color: var(--ink-3); font-size: 15px; }
+.celebrate .again { align-self: flex-start; margin-top: 12px; padding: 0; }
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation-duration: .01ms !important; animation-iteration-count: 1 !important; transition-duration: .01ms !important; }
+}
+
+/* Phones: the prototype becomes the screen, the rail follows below */
+@media (max-width: 520px) {
+  .stage { padding: 0; gap: 0; }
+  .phone { width: 100%; height: calc(100dvh - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px)); min-height: 640px; padding: 0; border-radius: 0; box-shadow: none; background: var(--night); }
+  .screen { border-radius: 0; }
+  .view { padding: 32px max(24px, env(safe-area-inset-right, 0px)) 28px max(24px, env(safe-area-inset-left, 0px)); }
+  .clock { font-size: 120px; }
+  .rail { width: 100%; padding: 32px max(16px, env(safe-area-inset-right, 0px)) 40px max(16px, env(safe-area-inset-left, 0px)); box-sizing: border-box; }
+}
+</style>
+<script src="https://unpkg.com/mqtt@5.10.1/dist/mqtt.min.js"></script>
+</head>
+<body>
+<main class="stage">
+  <div class="phone">
+    <div class="screen" id="screen">
+      <div id="view"></div>
+      <div class="dawn" aria-hidden="true"></div>
+    </div>
+  </div>
+</main>
+
+<script>
+(function () {
+  /* Live test build: every phone that opens this page shares one alarm through
+     room presence. Each phone announces its own state (joined, status, round)
+     plus the newest alarm it knows about; every phone merges what it hears.
+     Practice teammates are computed from the ring time, so all phones agree. */
+  const TEAM_SIZE = 11;
+  const SNOOZE_MS = 30000;        // shown as 5:00, runs 10x for testing
+  const SNOOZE_SECONDS = 300;
+  const STORE_KEY = 'morning-workout-alarm.live.v2';
+  const FAKES = [
+    { name: 'Maya', c: '#CBADC5' }, { name: 'Theo', c: '#9BBBA7' }, { name: 'Priya', c: '#9093AC' },
+    { name: 'Sam', c: '#CBADC5' }, { name: 'Lena', c: '#9BBBA7' }, { name: 'Omar', c: '#9093AC' },
+    { name: 'Ruby', c: '#CBADC5' }, { name: 'Cole', c: '#9BBBA7' }, { name: 'Nia', c: '#9598B7' },
+    { name: 'Jack', c: '#9598B7' }
+  ];
+  const REAL_COLORS = ['#9598B7', '#CBADC5', '#9BBBA7', '#9093AC'];
+  const STATUSES = ['asleep', 'snoozing', 'off'];
+  const TEAMS = ['Westside Warriors'];  // only one group for now; add more names here
+  const DEFAULT = { name: 'Morning workout', team: TEAMS[0], h: 5, m: 45, ap: 'AM' };
+  const LEAD_IN_MS = 15000;       // START TEST jumps to 15 seconds before the alarm time
+
+  const screenEl = document.getElementById('screen');
+  const viewEl = document.getElementById('view');
+  // Test build has no side panel; these stand-ins keep the control wiring harmless.
+  const byId = id => document.getElementById(id) || document.createElement('button');
+  const ringBtn = byId('ringBtn');
+  const soundBtn = byId('sound');
+  const soundState = byId('soundState');
+  const resetBtn = byId('resetBtn');
+  const leaveBtn = byId('leaveBtn');
+  const modeLine = byId('modeLine');
+
+  const esc = s => String(s).replace(/[&<>"]/g, ch => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[ch]));
+  const initial = name => (name.trim()[0] || '?').toUpperCase();
+  const fmt = sec => Math.floor(sec / 60) + ':' + String(sec % 60).padStart(2, '0');
+
+  /* ---------- Local state ---------- */
+  function load() {
+    try { return JSON.parse(localStorage.getItem(STORE_KEY)) || null; } catch (e) { return null; }
+  }
+  function save() {
+    try { localStorage.setItem(STORE_KEY, JSON.stringify({ me, alarm, anonKey, nick })); } catch (e) {}
+  }
+  const saved = load() || {};
+  const anonKey = saved.anonKey || 'anon-' + Math.random().toString(36).slice(2, 10);
+  let me = Object.assign({ joined: false, joinedAt: 0, round: 0, status: 'asleep', snoozeUntil: 0, gen: 0 }, saved.me);
+  let alarm = cleanAlarm(saved.alarm);       // { round, ringAt, rev, fakes, creator, name, h, m, ap }
+  let myKey = anonKey;
+  let nick = typeof saved.nick === 'string' ? saved.nick : '';   // the name this tester typed in
+  const cleanNick = v => String(v || '').replace(/\s+/g, ' ').trim().slice(0, 24);
+  function colorFor(key) {
+    // Same key, same color on every phone.
+    let h = 0;
+    for (const ch of String(key)) h = (h * 31 + ch.charCodeAt(0)) | 0;
+    return REAL_COLORS[Math.abs(h) % REAL_COLORS.length];
+  }
+  let room = null, user = null, isOwner = false, names = {};
+  const roster = new Map();                  // key -> { key, uid, joinedAt, round, status, online }
+  let team = [], prevTeam = null;
+  let ui = { screen: null, sheet: false, declined: false, joinedFlash: false, sound: true, feed: '', changed: null, nudged: false };
+  let audio = null, lastBeep = 0, wakeLock = null, heard = false;
+  ui.draft = null;
+
+  /* ---------- Sync ---------- */
+  const newer = (a, b) => !!a && (!b || a.gen > b.gen || (a.gen === b.gen && (a.round > b.round || (a.round === b.round &&
+    (a.ringAt > b.ringAt || (a.ringAt === b.ringAt && (a.rev || 0) > (b.rev || 0)))))));
+  function cleanAlarm(a) {
+    if (!a || typeof a !== 'object') return null;
+    const n = x => (typeof x === 'number' && isFinite(x) ? x : 0);
+    if (typeof a.creator !== 'string' || !(n(a.round) > 0)) return null;
+    return {
+      gen: n(a.gen), round: n(a.round), roundAt: n(a.roundAt), ringAt: n(a.ringAt), rev: n(a.rev),
+      fakes: Math.max(0, Math.min(TEAM_SIZE - 1, n(a.fakes))), creator: a.creator.slice(0, 80),
+      name: typeof a.name === 'string' && a.name.trim() ? a.name.trim().slice(0, 40) : DEFAULT.name,
+      team: TEAMS.includes(a.team) ? a.team : DEFAULT.team,
+      h: typeof a.h === 'number' && a.h >= 1 && a.h <= 12 ? Math.round(a.h) : DEFAULT.h,
+      m: typeof a.m === 'number' && a.m >= 0 && a.m <= 59 ? Math.round(a.m) : DEFAULT.m,
+      ap: a.ap === 'PM' ? 'PM' : 'AM'
+    };
+  }
+  let lastSent = '';
+  function publish() {
+    save();
+    if (!room) return;
+    const p = { key: myKey, nick, joined: me.joined, gen: me.gen || 0, joinedAt: me.joinedAt, round: me.round, status: me.status, alarm };
+    const s = JSON.stringify(p);
+    if (s === lastSent) return;
+    lastSent = s;
+    room.presence(p).catch(() => {});
+  }
+  function adoptAlarm(a) {
+    if (!newer(a, alarm)) return false;
+    const roundChanged = !alarm || a.round !== alarm.round;
+    if (alarm && a.gen !== alarm.gen) {
+      // Someone created a new alarm: everyone starts over and joins that one.
+      roster.clear();
+      me = { joined: false, joinedAt: 0, round: 0, status: 'asleep', snoozeUntil: 0, gen: a.gen };
+      ui.feed = ''; prevTeam = null; ui.draft = null; ui.newAlarm = false;
+    }
+    alarm = a;
+    if (roundChanged) {
+      // A new round: people who are no longer here drop out of the team.
+      for (const [k, r] of roster) if (!r.online) roster.delete(k);
+      if (me.status !== 'asleep') { me.status = 'asleep'; }
+    }
+    return true;
+  }
+  function mergePeers(peers) {
+    const seen = new Set();
+    let alarmChanged = false;
+    for (const p of peers) {
+      if (p.kind !== 'viewer' || p.isMe) continue;
+      const pr = p.presence || {};
+      const a = cleanAlarm(pr.alarm);
+      if (a && adoptAlarm(a)) alarmChanged = true;
+      const key = p.by || (typeof pr.key === 'string' ? pr.key.slice(0, 80) : p.peer);
+      if (key === myKey) continue;
+      if (pr.joined !== true || (pr.gen || 0) !== (alarm ? alarm.gen : 0)) { roster.delete(key); continue; }
+      if (p.online === false && alarm && typeof pr.ts === 'number' && pr.ts < (alarm.roundAt || 0)) { roster.delete(key); continue; }
+      if (p.online !== false) seen.add(key);
+      roster.set(key, {
+        key, uid: p.by, nick: cleanNick(pr.nick),
+        joinedAt: typeof pr.joinedAt === 'number' ? pr.joinedAt : 0,
+        round: typeof pr.round === 'number' ? pr.round : 0,
+        status: STATUSES.includes(pr.status) ? pr.status : 'asleep',
+        online: p.online !== false
+      });
+    }
+    // Someone whose phone went quiet keeps their last state: the alarm still waits for them.
+    for (const [k, r] of roster) if (!seen.has(k)) r.online = false;
+    if (alarmChanged) publish();
+    resolveNames();
+    update();
+  }
+  let nameReq = '';
+  function resolveNames() {
+    if (!user) return;
+    const ids = [...roster.values()].map(r => r.uid).filter(Boolean);
+    if (myKey !== anonKey) ids.push(myKey);
+    const sig = ids.sort().join(',');
+    if (!ids.length || sig === nameReq) return;
+    nameReq = sig;
+    user.profiles(ids).then(ps => {
+      for (const id in ps) if (ps[id].name) names[id] = ps[id].name.split(' ')[0];
+      update(true);
+    });
+  }
+  /* Live sync over a public MQTT broker: no accounts, no sign-in.
+     Each phone keeps one retained message with its state at <base>/p/<key>;
+     a late arrival gets everyone's latest state the moment it subscribes. */
+  const BROKERS = ['wss://broker.hivemq.com:8884/mqtt', 'wss://broker.emqx.io:8084/mqtt'];
+  const ROOM_ID = (new URLSearchParams(location.search).get('team') || 'westside-warriors-q7k2m9').replace(/[^a-z0-9-]/gi, '').slice(0, 40);
+  const BASE = 'team-alarm-proto/' + ROOM_ID;
+  const ONLINE_MS = 35000;          // a phone counts as here if it checked in this recently
+  function mqttRoom() {
+    const states = new Map();       // key -> presence object
+    let mine = {}, client = null, live = false, brokerIx = 0, failTimer = null;
+    const peerFns = [], connFns = [];
+    const peers = () => [...states.entries()].map(([k, p]) => ({
+      kind: 'viewer', by: null, peer: k, isMe: k === myKey,
+      online: typeof p.ts === 'number' && Date.now() - p.ts < ONLINE_MS, presence: p
+    }));
+    let pending = false;
+    const emitPeers = () => {
+      if (pending) return; pending = true;
+      requestAnimationFrame(() => { pending = false; const ps = peers(); peerFns.forEach(f => f({ peers: ps })); });
+    };
+    const send = () => {
+      if (!live || !mine.key) return;
+      client.publish(BASE + '/p/' + mine.key, JSON.stringify(Object.assign({}, mine, { ts: Date.now() })), { retain: true, qos: 1 });
+    };
+    function open() {
+      client = mqtt.connect(BROKERS[brokerIx], { connectTimeout: 8000, reconnectPeriod: 2500, clean: true,
+        clientId: 'ta-' + Math.random().toString(36).slice(2, 12) });
+      // If this broker never answers, try the next one.
+      failTimer = setTimeout(() => { if (!live) { client.end(true); brokerIx = (brokerIx + 1) % BROKERS.length; open(); } }, 9000);
+      client.on('connect', () => {
+        clearTimeout(failTimer);
+        live = true; connFns.forEach(f => f(true));
+        client.subscribe(BASE + '/p/+', { qos: 1 }, () => {
+          send();
+          // Retained states arrive right after subscribing; give them a moment before offering setup.
+          setTimeout(() => { heard = true; update(true); }, 1500);
+        });
+      });
+      client.on('close', () => { if (live) { live = false; connFns.forEach(f => f(false)); } });
+      client.on('message', (topic, buf) => {
+        const key = topic.slice(topic.lastIndexOf('/') + 1);
+        if (!buf || !buf.length) { states.delete(key); emitPeers(); return; }
+        try {
+          const p = JSON.parse(buf.toString());
+          if (p && typeof p === 'object') { states.set(key, p); emitPeers(); }
+        } catch (e) {}
+      });
+    }
+    open();
+    setInterval(send, 10000);       // heartbeat keeps "online" fresh
+    setInterval(emitPeers, 5000);   // re-check who has gone quiet
+    return {
+      presence(patch) { mine = Object.assign({}, mine, patch); send(); return Promise.resolve(); },
+      peers, connected: () => live,
+      onPeers(f) { peerFns.push(f); return () => {}; },
+      onConnection(f) { connFns.push(f); return () => {}; }
+    };
+  }
+  function connect() {
+    if (!window.mqtt) { heard = true; syncMode(); return update(true); }
+    room = mqttRoom();
+    room.onPeers(ch => mergePeers(ch.peers));
+    room.onConnection(() => { syncMode(); update(true); });
+    publish();
+    syncMode();
+    update(true);
+  }
+  function syncMode() {
+    if (room && room.connected()) {
+      const phones = new Set(room.peers().filter(p => p.kind === 'viewer').map(p => p.by || p.peer)).size;
+      modeLine.innerHTML = `<i class="live-dot"></i>Live · ${phones} ${phones === 1 ? 'phone' : 'phones'} connected`;
+      modeLine.className = 'mode live';
+    } else if (room) {
+      modeLine.innerHTML = '<i class="live-dot"></i>Connecting…';
+      modeLine.className = 'mode';
+    } else {
+      modeLine.innerHTML = '<i class="live-dot"></i>Solo · open the shared link signed in to sync';
+      modeLine.className = 'mode';
+    }
+  }
+
+  /* ---------- Team ---------- */
+  function rand(seed) {
+    // mulberry32: every phone gets the same practice teammates for a round.
+    return () => {
+      seed |= 0; seed = seed + 0x6D2B79F5 | 0;
+      let t = Math.imul(seed ^ seed >>> 15, 1 | seed);
+      t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t;
+      return ((t ^ t >>> 14) >>> 0) / 4294967296;
+    };
+  }
+  function fakeStatus(i, now) {
+    const t = (now - alarm.ringAt) / 1000;
+    const r = rand(alarm.round * 977 + i * 31 + 7);
+    if (r() < 0.5) {
+      const snoozeAt = 4 + r() * 25, offAt = snoozeAt + SNOOZE_MS / 1000 + 2 + r() * 12;
+      return t < snoozeAt ? 'asleep' : t < snoozeAt + SNOOZE_MS / 1000 ? 'snoozing' : t < offAt ? 'asleep' : 'off';
+    }
+    return t < 6 + r() * 60 ? 'asleep' : 'off';
+  }
+  const ringingRound = () => !!alarm && alarm.ringAt > 0 && Date.now() >= alarm.ringAt;
+  const countingDown = () => !!alarm && alarm.ringAt > 0 && Date.now() < alarm.ringAt;
+  const A = () => alarm || DEFAULT;
+  const alarmName = () => esc(A().name);
+  const teamName = () => esc(A().team || DEFAULT.team);
+  function clockAt(offsetSec) {
+    // The alarm time shifted by offsetSec, as {hm, ss, ap}.
+    const a = A();
+    let t = ((a.h % 12) + (a.ap === 'PM' ? 12 : 0)) * 3600 + a.m * 60 + offsetSec;
+    t = ((t % 86400) + 86400) % 86400;
+    const H = Math.floor(t / 3600), M = Math.floor(t / 60) % 60;
+    return { hm: (H % 12 || 12) + ':' + String(M).padStart(2, '0'), ss: String(t % 60).padStart(2, '0'), ap: H >= 12 ? 'PM' : 'AM' };
+  }
+  function myStatus() {
+    if (!ringingRound() || me.round !== alarm.round) return 'asleep';
+    return me.status;
+  }
+  const nameOf = (r, i) => r.nick || names[r.uid] || 'Teammate ' + (i + 1);
+  function realPeople() {
+    return [...roster.values()].sort((a, b) => a.joinedAt - b.joinedAt);
+  }
+  function computeTeam(now) {
+    const list = [];
+    const live = ringingRound();
+    if (me.joined) list.push({ key: myKey, you: true, name: 'You', ini: initial(nick || 'You'), c: colorFor(myKey), status: myStatus() });
+    realPeople().forEach((r, i) => {
+      const name = nameOf(r, i);
+      list.push({ key: r.key, name, ini: initial(name), c: colorFor(r.key), real: true, online: r.online,
+        status: live && r.round === alarm.round ? r.status : 'asleep' });
+    });
+    const nFake = live ? alarm.fakes : Math.max(0, TEAM_SIZE - list.length - (me.joined ? 0 : 1));
+    for (let i = 0; i < nFake; i++) {
+      const f = FAKES[i];
+      list.push({ key: 'fake-' + i, fake: true, name: f.name, ini: initial(f.name), c: f.c, status: live ? fakeStatus(i, now) : 'asleep' });
+    }
+    return list;
+  }
+  const count = k => team.filter(p => p.status === k).length;
+  const allUp = () => team.length > 0 && count('off') === team.length;
+  const isLeader = () => !!alarm && (alarm.creator === myKey || isOwner);
+  function creatorName() {
+    if (!alarm) return '';
+    if (alarm.creator === myKey) return 'You';
+    const i = realPeople().findIndex(r => r.key === alarm.creator);
+    return i >= 0 ? nameOf(realPeople()[i], i) : 'The organizer';
+  }
+
+  /* ---------- Sound, buzz, screen ---------- */
+  function ensureAudio() {
+    if (!audio) { try { audio = new (window.AudioContext || window.webkitAudioContext)(); } catch (e) { audio = null; } }
+    if (audio && audio.state === 'suspended') audio.resume().then(() => update(true));
+  }
+  const soundReady = () => !!audio && audio.state === 'running';
+  function beep() {
+    if (!soundReady() || !ui.sound) return;
+    const t = audio.currentTime;
+    [0, 0.17].forEach(d => {
+      const o = audio.createOscillator(), g = audio.createGain();
+      o.type = 'sine'; o.frequency.value = 988;
+      g.gain.setValueAtTime(0.0001, t + d);
+      g.gain.exponentialRampToValueAtTime(0.3, t + d + 0.01);
+      g.gain.exponentialRampToValueAtTime(0.0001, t + d + 0.12);
+      o.connect(g); g.connect(audio.destination);
+      o.start(t + d); o.stop(t + d + 0.14);
+    });
+  }
+  function keepAwake() {
+    if (!me.joined || wakeLock || !navigator.wakeLock) return;
+    navigator.wakeLock.request('screen').then(l => { wakeLock = l; l.addEventListener('release', () => { wakeLock = null; }); }).catch(() => {});
+  }
+  document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') keepAwake(); });
+
+  /* ---------- Views ---------- */
+  function avatar(p, cls) {
+    return `<span class="av ${cls || ''}" style="--c:${p.c}" aria-hidden="true">${esc(p.you ? 'You' : p.ini)}</span>`;
+  }
+  const soundChip = () => soundReady() ? '' :
+    `<button class="sound-chip" data-act="sound-on" type="button">
+       <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M11 5L6 9H2v6h4l5 4V5z"/><path d="M15.5 8.5a5 5 0 0 1 0 7M19 5a10 10 0 0 1 0 14"/></svg>
+       Tap to turn on alarm sound</button>`;
+
+  const chevron = up => `<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="${up ? 'M6 15l6-6 6 6' : 'M6 9l6 6 6-6'}"/></svg>`;
+  function createView() {
+    const d = ui.draft;
+    const editing = !!alarm && !ui.newAlarm;
+    return `<section class="view create">
+      <div class="inviter"><span class="av av-sm" style="--c:#B0B4D9" aria-hidden="true">+</span><span>${editing ? 'Edit your team alarm' : 'New team alarm'}</span></div>
+      <label class="field-label" for="alarmName">Name</label>
+      <input class="name-input" id="alarmName" type="text" maxlength="40" autocomplete="off" placeholder="Morning workout" value="${esc(d.name)}">
+      <label class="field-label" for="alarmTeam">Group</label>
+      <div class="select-wrap">
+        <select class="team-select${d.team ? '' : ' empty'}" id="alarmTeam">
+          <option value="" disabled${d.team ? '' : ' selected'}>Select group</option>
+          ${TEAMS.map(t => `<option value="${esc(t)}"${t === d.team ? ' selected' : ''}>${esc(t)}</option>`).join('')}
+        </select>
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg>
+      </div>
+      <div class="picker" role="group" aria-label="Wake-up time">
+        <div class="seg seg-h"><div class="seg-col">
+          <button class="step" data-act="h+" type="button" aria-label="Hour later">${chevron(true)}</button>
+          <span class="val" id="hVal">${d.h}</span>
+          <button class="step" data-act="h-" type="button" aria-label="Hour earlier">${chevron(false)}</button>
+        </div></div>
+        <span class="colon" aria-hidden="true">:</span>
+        <div class="seg">
+          <button class="step" data-act="m+" type="button" aria-label="Five minutes later">${chevron(true)}</button>
+          <span class="val" id="mVal">${String(d.m).padStart(2, '0')}</span>
+          <button class="step" data-act="m-" type="button" aria-label="Five minutes earlier">${chevron(false)}</button>
+        </div>
+        <div class="ampm-toggle">
+          <button data-act="am" type="button" aria-pressed="${d.ap === 'AM'}">AM</button>
+          <button data-act="pm" type="button" aria-pressed="${d.ap === 'PM'}">PM</button>
+        </div>
+      </div>
+      <div class="actions">
+        <button class="btn-primary" data-act="create" type="button"${d.team ? '' : ' disabled'}>${editing ? 'SAVE' : 'CREATE'}</button>
+        ${alarm ? '<button class="btn-text" data-act="cancel-edit" type="button">CANCEL</button>' : ''}
+      </div>
+    </section>`;
+  }
+  function syncPicker() {
+    const d = ui.draft;
+    const h = document.getElementById('hVal'), m = document.getElementById('mVal');
+    if (h) h.textContent = d.h;
+    if (m) m.textContent = String(d.m).padStart(2, '0');
+    viewEl.querySelectorAll('.ampm-toggle button').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.act === d.ap.toLowerCase())));
+  }
+  function nameView() {
+    const v = ui.nickDraft || '';
+    return `<section class="view create name-screen">
+      <div class="name-hero">
+        <span class="av av-xl" id="nickAv" style="--c:${colorFor(myKey)}" aria-hidden="true">${esc(v.trim() ? initial(v) : '?')}</span>
+        <h2 class="title center">What's your name?</h2>
+      </div>
+      <label class="field-label" for="yourName">Your name</label>
+      <input class="name-input" id="yourName" type="text" maxlength="24" autocomplete="given-name" placeholder="First name" value="${esc(v)}">
+      <div class="actions">
+        <button class="btn-primary" data-act="set-name" type="button"${v.trim() ? '' : ' disabled'}>CONTINUE</button>
+      </div>
+    </section>`;
+  }
+  const loadingView = () => `<section class="view loading">${ui.slow ? "Can't reach your team yet. Check your connection." : "Finding your team's alarm…"}</section>`;
+  setTimeout(() => { ui.slow = true; if (ui.screen === 'loading') render(); }, 12000);
+
+  function joinView() {
+    const reals = team.filter(p => p.real);
+    const youP = team.find(p => p.you);
+    const stackSrc = (reals.length ? reals : team.filter(p => p.fake)).slice(0, 3).reverse();
+    const stack = (youP ? [youP] : []).concat(stackSrc);
+    const others = team.length - (youP ? 1 : 0);
+    const countText = youP ? `You + ${others} more` : `+ ${others} more`;
+    const inviter = !alarm ? 'Start a team alarm' : alarm.creator === myKey ? 'You set up' : `${creatorName()} invited you to`;
+    const inviterAv = alarm && alarm.creator !== myKey ? (team.find(p => p.key === alarm.creator) || { c: '#9598B7', ini: initial(creatorName()) }) : { c: '#B0B4D9', ini: '+' };
+    let actions;
+    if (ui.declined) {
+      actions = `<div class="declined"><p>You're out for this one.<br>Tap undo if you change your mind.</p>
+        <button class="btn-text" data-act="undo" type="button">UNDO</button></div>`;
+    } else if (me.joined) {
+      actions = `<button class="btn-primary done" type="button" disabled>
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>JOINED</button>
+        <span class="btn-text" style="display:flex;align-items:center;color:var(--ink-3)">See you at ${clockAt(0).hm} ${clockAt(0).ap}</span>`;
+    } else {
+      actions = `<button class="btn-primary" data-act="join" type="button">JOIN</button>
+        <button class="btn-text" data-act="decline" type="button">DECLINE</button>`;
+    }
+    const roster = team.map(p => {
+      const tag = alarm && p.key === alarm.creator ? 'Created' : 'Joined';
+      return `<li>${avatar(p)}<span>${esc(p.name)}</span><span class="tag in">${tag}</span></li>`;
+    }).join('');
+    return `<section class="view join">
+      <div class="inviter">${avatar(inviterAv, 'av-sm')}<span>${esc(inviter)}</span></div>
+      <h2 class="title join-title">${alarmName()}</h2>
+      <span class="team-tag">${teamName()}</span>
+      <div class="join-clock">
+        <div class="clock" aria-label="${clockAt(0).hm} ${clockAt(0).ap}">${clockAt(0).hm}<span class="ampm-side">${clockAt(0).ap}</span></div>
+        <button class="crew" data-act="sheet" type="button" aria-label="See who's in, ${team.length} joined">
+          <span class="stack">${stack.map(p => avatar(p, p.you ? 'me' : '')).join('')}</span>
+          <span class="crew-count">${countText}</span>
+        </button>
+      </div>
+      <div class="actions join-actions">${actions}</div>
+      ${ui.sheet ? `<div class="sheet-scrim" data-act="close"></div>
+        <div class="sheet" role="dialog" aria-label="Who's in">
+          <div class="grabber"></div>
+          <div class="sheet-head"><h3>Who's in</h3><span>${team.length} joined</span></div>
+          <ul class="roster">${roster}</ul>
+        </div>` : ''}
+    </section>`;
+  }
+
+  function nightView() {
+    const who = team.map(p => `<span class="dot s-off${p.you ? ' you' : ''}" role="img" aria-label="${esc(p.name)}">${esc(p.ini)}</span>`).join('');
+    const t = clockAt(0);
+    const lead = isLeader()
+      ? `<button class="btn-primary ring-now" data-act="ringnow" type="button">START TEST</button>
+         <button class="btn-text" data-act="edit" type="button">EDIT ALARM</button>`
+      : `<p>See you at ${t.hm} ${t.ap}</p>`;
+    return `<section class="view night">
+      <span class="eyebrow">${teamName()} · ${team.length} people</span>
+      <div class="clock">${t.hm}<span class="secs">${t.ap}</span></div>
+      <div class="joined-row">
+        <div class="grid">${who}</div>
+        <span>${team.length} joined</span>
+      </div>
+      ${lead}
+      ${soundChip()}
+    </section>`;
+  }
+  function countdownParts() {
+    const left = Math.max(0, Math.ceil((alarm.ringAt - Date.now()) / 1000));
+    return clockAt(-left);
+  }
+  function countdownView() {
+    const c = countdownParts(), t = clockAt(0);
+    return `<section class="view night">
+      <span class="eyebrow">Alarm set · ${team.length} people</span>
+      <div class="clock" id="nightClock">${c.hm}<span class="secs">${c.ss}</span></div>
+      ${soundChip()}
+    </section>`;
+  }
+
+  function dialView(mode) {
+    const C = 2 * Math.PI * 125.5;
+    const progress = snoozeLeft() / SNOOZE_SECONDS;
+    const ring = mode === 'snoozing'
+      ? `<svg class="snooze-ring" viewBox="0 0 251 251" aria-hidden="true"><circle class="track" cx="125.5" cy="125.5" r="122"/><circle class="bar" id="snoozeBar" cx="125.5" cy="125.5" r="122" stroke-dasharray="${C}" stroke-dashoffset="${C * (1 - progress)}"/></svg>`
+      : '';
+    const rays = mode === 'ringing'
+      ? `<svg class="rays" viewBox="0 155 390 227" aria-hidden="true">
+           <g class="r"><path d="M329.5 228.25L365.5 206.25M333.5 271.25H369.5M328.5 305.25L363.5 328.25"/></g>
+           <g class="l"><path d="M26.5 203.25L62.5 222.25M22.5 265.25H61.5M33.5 331.25L66.5 303.25"/></g>
+         </svg>`
+      : '';
+    return `<div class="dial-wrap ${mode}">
+      ${rays}
+      <div class="dial">
+        <span class="ripple" aria-hidden="true"></span><span class="ripple r2" aria-hidden="true"></span>
+        <span class="disc" aria-hidden="true"></span>
+        ${ring}
+        <div class="dial-face"><div class="clock" aria-label="${clockAt(0).hm} ${clockAt(0).ap}">${clockAt(0).hm}</div><span class="ampm-under" aria-hidden="true">${clockAt(0).ap}</span></div>
+      </div>
+    </div>`;
+  }
+
+  const dotLabel = p => `${p.name}: ${p.status === 'off' ? 'turned off' : p.status === 'snoozing' ? 'snoozing' : 'still sleeping'}`;
+  const dotClass = p => `dot s-${p.status}${p.you ? ' you' : ''}${p.real && !p.online ? ' away' : ''}`;
+  function gridHtml() {
+    return team.map(p => `<span class="${dotClass(p)}${ui.changed === p.key ? ' changed' : ''}" data-key="${esc(p.key)}" role="img" aria-label="${esc(dotLabel(p))}">${esc(p.ini)}</span>`).join('');
+  }
+  function teamHtml() {
+    return `<div class="team">
+      <p class="team-count"><strong data-up>${count('off')}</strong> of ${team.length} up</p>
+      <div class="grid" id="grid">${gridHtml()}</div>
+      <p class="feed center" id="feed" aria-live="polite">${ui.feed}</p>
+    </div>`;
+  }
+
+  function ringView() {
+    return `<section class="view">
+      <h2 class="title sm center">${alarmName()}</h2>
+      ${dialView('ringing')}
+      ${teamHtml()}
+      <div class="actions">
+        ${soundChip()}
+        <button class="btn-primary" data-act="off" type="button">OFF</button>
+        <button class="btn-text" data-act="snooze" type="button">SNOOZE</button>
+      </div>
+    </section>`;
+  }
+
+  const snoozeLeft = () => Math.max(0, Math.ceil((me.snoozeUntil - Date.now()) / SNOOZE_MS * SNOOZE_SECONDS));
+  function snoozeView() {
+    return `<section class="view">
+      <h2 class="title sm center">${alarmName()}</h2>
+      ${dialView('snoozing')}
+      ${teamHtml()}
+      <div class="actions" style="gap:0">
+        <span class="snooze-label">SNOOZING</span>
+        <span class="countdown" id="countdown">${fmt(snoozeLeft())}</span>
+        <span class="countdown-note">Rings again at ${clockAt(300).hm} ${clockAt(300).ap}</span>
+      </div>
+    </section>`;
+  }
+
+  function groupsHtml() {
+    const order = [['asleep', 'Still sleeping'], ['snoozing', 'Snoozing'], ['off', 'Turned off']];
+    return order.filter(([k]) => count(k) > 0).map(([k, label]) => {
+      const dots = team.filter(p => p.status === k).map(p => {
+        const cls = ['sdot', 's-' + k, p.you ? 'you' : '', p.real && !p.online ? 'away' : '',
+          ui.changed === p.key ? 'arrived' : '', k === 'asleep' && ui.nudged ? 'nudged' : ''].join(' ');
+        return `<span class="${cls}" role="img" aria-label="${esc(p.name)}">${esc(p.ini)}</span>`;
+      }).join('');
+      const nudge = k === 'asleep'
+        ? `<button class="nudge" data-act="nudge" type="button">
+             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.7 21a2 2 0 0 1-3.4 0"/></svg>Nudge</button>`
+        : '';
+      return `<section class="group g-${k}">
+        <div class="group-head"><h2>${label}</h2><span class="n">${count(k)}</span>${nudge}</div>
+        <div class="dots">${dots}</div>
+      </section>`;
+    }).join('');
+  }
+
+  function statusView() {
+    // Hierarchy: how many are left, then who (biggest = most urgent), then who's already up.
+    const hero = allUp()
+      ? `<div class="celebrate"><strong>Everyone's up</strong><span>Alarm off for all ${team.length}. See you at the gym.</span>
+          ${isLeader() ? '<button class="btn-text again" data-act="reset" type="button">SET UP ANOTHER ROUND</button>' : ''}</div>`
+      : `<div class="hero">
+          <p class="still-ringing">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.7 21a2 2 0 0 1-3.4 0"/></svg>
+            Still ringing for everyone</p>
+          <p class="hero-count"><strong data-left>${team.length - count('off')}</strong><span>to go</span></p>
+          <p class="feed" id="feed" aria-live="polite">${ui.feed}</p>
+        </div>`;
+    return `<section class="view status">
+      <h2 class="title sm">${alarmName()}</h2>
+      ${hero}
+      <div class="groups" id="groups">${groupsHtml()}</div>
+    </section>`;
+  }
+
+  /* ---------- Render ---------- */
+  function screenFor() {
+    if (!ui.draft && heard && !alarm && !me.joined) ui.draft = Object.assign({}, DEFAULT, { team: '' });
+    if (!nick) return 'name';
+    if (ui.draft) return 'create';
+    if (!heard && !alarm) return 'loading';
+    if (!alarm && !me.joined) return 'create';
+    if (!me.joined || ui.joinedFlash) return 'join';
+    if (countingDown()) return 'countdown';
+    if (!ringingRound()) return 'night';
+    if (allUp()) return 'status';
+    const s = myStatus();
+    return s === 'asleep' ? 'ringing' : s === 'snoozing' ? 'snoozing' : 'status';
+  }
+  function render() {
+    const v = { name: nameView, loading: loadingView, create: createView, join: joinView, night: nightView, countdown: countdownView,
+      ringing: ringView, snoozing: snoozeView, status: statusView }[ui.screen];
+    viewEl.innerHTML = v();
+    syncChrome();
+  }
+  let teamSig = '';
+  function refresh() {
+    const sig = team.map(p => p.key + ':' + p.name).join('|');
+    if (sig !== teamSig) {
+      teamSig = sig;
+      if ((ui.screen === 'night' || ui.screen === 'join') && !ui.sheet) { render(); return; }
+    }
+    // Update live parts without restarting the screen's ambient animations.
+    const feed = document.getElementById('feed');
+    if (feed && feed.innerHTML !== ui.feed) {
+      feed.innerHTML = ui.feed;
+      feed.classList.remove('flash'); void feed.offsetWidth; feed.classList.add('flash');
+    }
+    const grid = document.getElementById('grid');
+    if (grid) {
+      const keys = [...grid.children].map(el => el.dataset.key).join('|');
+      if (keys !== team.map(p => p.key).join('|')) grid.innerHTML = gridHtml();
+      else team.forEach((p, i) => {
+        // Swap classes in place so the sleepers' pulse keeps its rhythm.
+        const el = grid.children[i], next = dotClass(p);
+        if (el.className.replace(' changed', '') !== next) {
+          el.className = next; void el.offsetWidth; el.classList.add('changed');
+          el.setAttribute('aria-label', dotLabel(p));
+          el.textContent = p.ini;
+        }
+      });
+    }
+    if (ui.screen === 'countdown') {
+      const el = document.getElementById('nightClock'), c = countdownParts();
+      if (el) el.innerHTML = `${c.hm}<span class="secs">${c.ss}</span>`;
+    }
+    if (ui.screen === 'snoozing') {
+      const left = snoozeLeft();
+      const cd = document.getElementById('countdown');
+      if (cd) cd.textContent = fmt(left);
+      const bar = document.getElementById('snoozeBar');
+      if (bar) bar.setAttribute('stroke-dashoffset', 2 * Math.PI * 125.5 * (1 - left / SNOOZE_SECONDS));
+    }
+    if (ui.screen === 'status') {
+      const groups = document.getElementById('groups');
+      const html = groupsHtml();
+      if (groups && groups.dataset.html !== html) { groups.innerHTML = html; groups.dataset.html = html; }
+    }
+    syncChrome();
+  }
+  function syncChrome() {
+    const live = ringingRound() && (ui.screen === 'ringing' || ui.screen === 'snoozing' || ui.screen === 'status');
+    screenEl.style.setProperty('--wake', live && team.length ? count('off') / team.length : 0);
+    screenEl.classList.toggle('sunrise', live && allUp());
+    viewEl.querySelectorAll('[data-up]').forEach(el => el.textContent = count('off'));
+    viewEl.querySelectorAll('[data-left]').forEach(el => el.textContent = team.length - count('off'));
+    ringBtn.hidden = !(me.joined && isLeader() && !alarm.ringAt);
+    resetBtn.hidden = !(me.joined && isLeader() && ringingRound());
+    leaveBtn.hidden = !me.joined;
+    soundBtn.setAttribute('aria-pressed', String(ui.sound));
+    soundState.textContent = !ui.sound ? 'Off' : soundReady() ? 'On' : 'Tap to allow';
+  }
+
+  /* ---------- Feed ---------- */
+  function setFeed(event) {
+    const up = count('off');
+    if (allUp()) { ui.feed = "<b>Everyone's up</b>"; return; }
+    if (up === team.length - 1 && myStatus() !== 'off' && me.joined) { ui.feed = "<b>Everyone's waiting on you</b>"; return; }
+    if (event) ui.feed = `<b>${esc(event)}</b>`;
+  }
+  function diffFeed() {
+    if (!prevTeam) return;
+    const before = new Map(prevTeam.map(p => [p.key, p]));
+    let event = null;
+    for (const p of team) {
+      const was = before.get(p.key);
+      if (!was) continue;
+      if (was.status === p.status || !ringingRound()) continue;
+      ui.changed = p.key; ui.nudged = false;
+      const who = p.you ? 'You' : p.name;
+      event = p.status === 'off' ? (p.you ? "You're up" : `${who} is up`)
+        : p.status === 'snoozing' ? `${who} hit snooze`
+        : p.you ? 'Snooze is over' : `${who}'s snooze ran out`;
+    }
+    if (event || ringingRound()) setFeed(event);
+  }
+
+  /* ---------- Loop ---------- */
+  function update(force) {
+    const now = Date.now();
+    if (me.status === 'snoozing' && now >= me.snoozeUntil) { me.status = 'asleep'; publish(); }
+    team = computeTeam(now);
+    diffFeed();
+    prevTeam = team;
+    const screen = screenFor();
+    if (screen !== ui.screen || (force && screen !== 'create' && screen !== 'name')) {
+      if (screen === 'ringing' && ui.screen !== 'ringing' && !ui.feed) setFeed("It's time");
+      ui.screen = screen; render();
+    } else refresh();
+    const ringing = ui.screen === 'ringing' || (ui.screen === 'status' && ringingRound() && !allUp());
+    if (ringing && now - lastBeep >= 1000) {
+      lastBeep = now; beep();
+      if (ui.screen === 'ringing' && navigator.vibrate) navigator.vibrate([300, 150, 300]);
+    }
+  }
+  setInterval(update, 200);
+
+  /* ---------- Actions ---------- */
+  function act(name) {
+    ensureAudio();
+    switch (name) {
+      case 'join':
+        if (!alarm) alarm = cleanAlarm({ gen: Date.now(), round: 1, ringAt: 0, fakes: 0, creator: myKey });
+        me = { joined: true, joinedAt: Date.now(), round: alarm.round, status: 'asleep', snoozeUntil: 0, gen: alarm.gen };
+        ui.joinedFlash = true; ui.sheet = false;
+        publish(); keepAwake(); update(true);
+        setTimeout(() => { ui.joinedFlash = false; update(true); }, 1400);
+        break;
+      case 'decline': ui.declined = true; render(); break;
+      case 'undo': ui.declined = false; render(); break;
+      case 'sheet': ui.sheet = true; render(); break;
+      case 'close': ui.sheet = false; render(); break;
+      case 'sound-on': ui.sound = true; update(true); break;
+      case 'ringnow': ringNow(); break;
+      case 'set-name': {
+        const n = cleanNick(ui.nickDraft);
+        if (!n) break;
+        nick = n; ui.nickDraft = '';
+        lastSent = ''; publish(); update(true);
+        break;
+      }
+      case 'h+': ui.draft.h = ui.draft.h % 12 + 1; syncPicker(); break;
+      case 'h-': ui.draft.h = (ui.draft.h + 10) % 12 + 1; syncPicker(); break;
+      case 'm+': ui.draft.m = (ui.draft.m + 5) % 60; syncPicker(); break;
+      case 'm-': ui.draft.m = (ui.draft.m + 55) % 60; syncPicker(); break;
+      case 'am': ui.draft.ap = 'AM'; syncPicker(); break;
+      case 'pm': ui.draft.ap = 'PM'; syncPicker(); break;
+      case 'edit': ui.draft = { name: A().name, team: A().team || DEFAULT.team, h: A().h, m: A().m, ap: A().ap }; update(true); break;
+      case 'cancel-edit': ui.draft = null; ui.newAlarm = false; update(true); break;
+      case 'new-alarm': ui.draft = Object.assign({}, DEFAULT, { team: '' }); ui.newAlarm = true; ui.sheet = false; update(true); break;
+      case 'create': {
+        if (!ui.draft.team) break;
+        const d = ui.draft, name = (d.name || '').trim().slice(0, 40) || DEFAULT.name;
+        const team = TEAMS.includes(d.team) ? d.team : DEFAULT.team;
+        const fields = { name, team, h: d.h, m: d.m, ap: d.ap, rev: Date.now() };
+        ui.draft = null;
+        const fresh = !alarm || ui.newAlarm;
+        ui.newAlarm = false;
+        if (!fresh) {
+          alarm = Object.assign({}, alarm, fields);
+          publish(); update(true);
+        } else {
+          alarm = Object.assign({ gen: Date.now(), round: 1, roundAt: Date.now(), ringAt: 0, fakes: 0, creator: myKey }, fields);
+          me = { joined: true, joinedAt: Date.now(), round: 1, status: 'asleep', snoozeUntil: 0, gen: alarm.gen };
+          roster.clear(); ui.feed = ''; prevTeam = null;
+          ui.joinedFlash = true;
+          publish(); keepAwake(); update(true);
+          setTimeout(() => { ui.joinedFlash = false; update(true); }, 1400);
+        }
+        break;
+      }
+      case 'reset': resetRound(); break;
+      case 'off':
+        me.round = alarm.round; me.status = 'off'; ui.changed = myKey;
+        publish(); update(true);
+        break;
+      case 'snooze':
+        me.round = alarm.round; me.status = 'snoozing'; me.snoozeUntil = Date.now() + SNOOZE_MS; ui.changed = myKey;
+        publish(); update(true);
+        break;
+      case 'nudge': {
+        const sleepers = team.filter(p => p.status === 'asleep' && !p.you).map(p => p.name);
+        ui.nudged = true; ui.changed = null;
+        setFeed('You nudged ' + (sleepers.length > 2 ? sleepers.length + ' people' : sleepers.join(' and ')));
+        const groups = document.getElementById('groups');
+        if (groups) { groups.innerHTML = groupsHtml(); groups.dataset.html = ''; }
+        refresh();
+        break;
+      }
+    }
+  }
+  function ringNow() {
+    if (!alarm || !isLeader()) return;
+    const reals = team.filter(p => !p.fake).length;
+    alarm = Object.assign({}, alarm, { ringAt: Date.now() + LEAD_IN_MS, fakes: Math.max(0, TEAM_SIZE - reals) });
+    ui.feed = '';
+    publish(); update(true);
+  }
+  function resetRound() {
+    if (!alarm || !isLeader()) return;
+    alarm = Object.assign({}, alarm, { round: alarm.round + 1, roundAt: Date.now(), ringAt: 0, fakes: 0 });
+    for (const [k, r] of roster) if (!r.online) roster.delete(k);
+    me.round = alarm.round; me.status = 'asleep'; ui.feed = ''; prevTeam = null;
+    publish(); update(true);
+  }
+
+  viewEl.addEventListener('click', e => {
+    const t = e.target.closest('[data-act]');
+    if (t) act(t.dataset.act);
+  });
+  viewEl.addEventListener('keydown', e => { if (e.key === 'Escape' && ui.sheet) act('close'); });
+  viewEl.addEventListener('input', e => {
+    if (e.target.id === 'alarmName' && ui.draft) ui.draft.name = e.target.value;
+    if (e.target.id === 'yourName') {
+      ui.nickDraft = e.target.value;
+      const ok = !!cleanNick(ui.nickDraft);
+      const av = document.getElementById('nickAv');
+      if (av) av.textContent = ok ? initial(cleanNick(ui.nickDraft)) : '?';
+      const btn = viewEl.querySelector('[data-act=set-name]');
+      if (btn) btn.disabled = !ok;
+    }
+  });
+  viewEl.addEventListener('keydown', e => { if (e.key === 'Enter' && e.target.id === 'yourName') act('set-name'); });
+  viewEl.addEventListener('change', e => {
+    if (e.target.id !== 'alarmTeam' || !ui.draft) return;
+    ui.draft.team = e.target.value;
+    e.target.classList.toggle('empty', !ui.draft.team);
+    const btn = viewEl.querySelector('[data-act=create]');
+    if (btn) btn.disabled = !ui.draft.team;
+  });
+  ringBtn.addEventListener('click', () => { ensureAudio(); ringNow(); });
+  resetBtn.addEventListener('click', () => { ensureAudio(); resetRound(); });
+  soundBtn.addEventListener('click', () => { ensureAudio(); ui.sound = !ui.sound; syncChrome(); });
+  byId('newBtn').addEventListener('click', () => act('new-alarm'));
+  leaveBtn.addEventListener('click', () => {
+    me = { joined: false, joinedAt: 0, round: 0, status: 'asleep', snoozeUntil: 0, gen: alarm ? alarm.gen : 0 };
+    ui.feed = ''; prevTeam = null;
+    publish(); update(true);
+  });
+  // Any tap on the page can unlock sound (browsers need one before audio plays).
+  document.addEventListener('pointerdown', () => { if (!soundReady()) ensureAudio(); }, { passive: true });
+
+  syncMode();
+  update(true);
+  connect();
+})();
+</script>
+
+</body>
+</html>
