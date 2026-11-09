@@ -1109,9 +1109,11 @@ button { font: inherit; color: inherit; cursor: pointer; }
     diffFeed();
     prevTeam = team;
     const screen = screenFor();
-    if (screen !== ui.screen || (force && screen !== 'create' && screen !== 'name')) {
+    // The status hero swaps from "still ringing" to "everyone's up", so redraw when that flips.
+    const up = allUp();
+    if (screen !== ui.screen || up !== ui.allUp || (force && screen !== 'create' && screen !== 'name')) {
       if (screen === 'ringing' && ui.screen !== 'ringing' && !ui.feed) setFeed("It's time");
-      ui.screen = screen; render();
+      ui.screen = screen; ui.allUp = up; render();
     } else refresh();
     const ringing = ui.screen === 'ringing' || (ui.screen === 'status' && ringingRound() && !allUp());
     if (ringing && now - lastBeep >= 1000) {
